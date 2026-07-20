@@ -1,6 +1,0 @@
-G:\FacultyApi\FacultyApi\obj\Debug\net8.0\FacultyApi.GeneratedMSBuildEditorConfig.editorconfig
-G:\FacultyApi\FacultyApi\obj\Debug\net8.0\FacultyApi.AssemblyInfoInputs.cache
-G:\FacultyApi\FacultyApi\obj\Debug\net8.0\FacultyApi.AssemblyInfo.cs
-G:\FacultyApi\FacultyApi\obj\Debug\net8.0\FacultyApi.csproj.CoreCompileInputs.cache
-G:\FacultyApi\FacultyApi\obj\Debug\net8.0\FacultyApi.MvcApplicationPartsAssemblyInfo.cache
-G:\FacultyApi\FacultyApi\obj\Debug\net8.0\FacultyApi.csproj.AssemblyReference.cache
