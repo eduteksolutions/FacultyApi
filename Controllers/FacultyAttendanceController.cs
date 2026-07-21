@@ -79,17 +79,52 @@ namespace FacultyApi.Controllers
 
         // POST: api/FacultyAttendance/PunchIn
         [HttpPost("PunchIn")]
-        public IActionResult PunchIn([FromBody] PunchInRequest model)
+        public async Task<IActionResult> PunchIn([FromBody] PunchInRequest model)
         {
             try
             {
+                if (model == null)
+                {
+                    return BadRequest(new
+                    {
+                        Status = false,
+                        Message = "Invalid request"
+                    });
+                }
+
+
+                // Check already punched in today
+                var existingAttendance = await _context.HRDCardAttendances
+                    .FirstOrDefaultAsync(x =>
+                        x.empCode == model.FacultyCd &&
+                        x.UserID == model.UserId &&
+                        x.aDate.Date == model.S_Date.Date
+                    );
+
+
+                if (existingAttendance != null)
+                {
+                    return Ok(new
+                    {
+                        Code = "500",
+                        Status = false,
+                        Message = "Attendance already marked for today",
+                        TransactionStatus = 0
+                    });
+                }
+
+
+
                 int result = 0;
 
                 using SqlConnection con = new SqlConnection(
                     _configuration.GetConnectionString("DefaultConnection"));
 
-                SqlCommand cmd = new SqlCommand(
-                    "InsertHRDCardAttendance", con);
+
+                using SqlCommand cmd = new SqlCommand(
+                    "InsertHRDCardAttendance",
+                    con);
+
 
                 cmd.CommandType = System.Data.CommandType.StoredProcedure;
 
@@ -98,28 +133,37 @@ namespace FacultyApi.Controllers
 
                 cmd.Parameters.AddWithValue("@empCode", model.FacultyCd);
 
-                cmd.Parameters.AddWithValue("@reason", model.Reason ?? "");
+                cmd.Parameters.AddWithValue("@reason",
+                    model.Reason ?? "");
 
-                cmd.Parameters.AddWithValue("@Status", model.Status ?? "");
+                cmd.Parameters.AddWithValue("@Status",
+                    model.Status ?? "P");
 
-                cmd.Parameters.AddWithValue("@facultyname", model.FacultyName ?? "");
+                cmd.Parameters.AddWithValue("@facultyname",
+                    model.FacultyName ?? "");
 
-                cmd.Parameters.AddWithValue("@latitude", model.Latitude ?? "");
+                cmd.Parameters.AddWithValue("@latitude",
+                    model.Latitude ?? "");
 
-                cmd.Parameters.AddWithValue("@longitude", model.Longitude ?? "");
+                cmd.Parameters.AddWithValue("@longitude",
+                    model.Longitude ?? "");
+
 
                 cmd.Parameters.AddWithValue("@inTime",
                     string.IsNullOrEmpty(model.EInTime)
                     ? DBNull.Value
                     : model.EInTime);
 
-                cmd.Parameters.AddWithValue("@outTime", DBNull.Value);
 
-                cmd.Parameters.AddWithValue("@UserID", model.UserId);
+                cmd.Parameters.AddWithValue("@outTime",
+                    DBNull.Value);
+
+
+                cmd.Parameters.AddWithValue("@UserID",
+                    model.UserId);
 
 
 
-                // OUTPUT PARAMETER
                 SqlParameter transStatus = new SqlParameter(
                     "@TransStatus",
                     System.Data.SqlDbType.Int)
@@ -127,28 +171,27 @@ namespace FacultyApi.Controllers
                     Direction = System.Data.ParameterDirection.Output
                 };
 
+
                 cmd.Parameters.Add(transStatus);
 
 
-
-                con.Open();
-
-                // Execute SP
-                cmd.ExecuteNonQuery();
+                await con.OpenAsync();
 
 
-                // Get output value
+                await cmd.ExecuteNonQueryAsync();
+
+
                 result = Convert.ToInt32(transStatus.Value);
 
 
 
                 return Ok(new
                 {
-                    Code = result == 1 ? "200" : "500",
+                    code = result == 1 ? "200" : "500",
 
-                    Status = result == 1,
+                    status = result == 1,
 
-                    Message = result switch
+                    message = result switch
                     {
                         1 => "Punch In Successfully",
                         2 => "Punch Out Already Done",
@@ -156,35 +199,83 @@ namespace FacultyApi.Controllers
                         _ => "Punch Failed"
                     },
 
-                    TransactionStatus = result
+                    transactionStatus = result
                 });
+
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new
                 {
-                    Status = false,
-                    Message = ex.Message
+                    status = false,
+                    message = ex.Message
                 });
             }
         }
 
 
-
         // POST: api/FacultyAttendance/PunchOut
         [HttpPost("PunchOut")]
-        public IActionResult PunchOut([FromBody] PunchOutRequest model)
+        public async Task<IActionResult> PunchOut([FromBody] PunchOutRequest model)
         {
             try
             {
+                if (model == null)
+                {
+                    return BadRequest(new
+                    {
+                        status = false,
+                        message = "Invalid request"
+                    });
+                }
+
+
+                // Check today's attendance
+                var attendance = await _context.HRDCardAttendances
+                    .FirstOrDefaultAsync(x =>
+                        x.empCode == model.FacultyCd &&
+                        x.UserID == model.UserId &&
+                        x.aDate.Date == model.S_Date.Date
+                    );
+
+
+                // No Punch In found
+                if (attendance == null)
+                {
+                    return Ok(new
+                    {
+                        code = "500",
+                        status = false,
+                        message = "Please Punch In first",
+                        transactionStatus = 0
+                    });
+                }
+
+
+                // Already Punch Out
+                if (attendance.outTime != null)
+                {
+                    return Ok(new
+                    {
+                        code = "500",
+                        status = false,
+                        message = "Punch Out already completed",
+                        transactionStatus = 0
+                    });
+                }
+
+
+
                 int result = 0;
+
 
                 using SqlConnection con = new SqlConnection(
                     _configuration.GetConnectionString("DefaultConnection"));
 
 
-                SqlCommand cmd = new SqlCommand(
-                    "UpdateHRDCardAttendanceOutTime", con);
+                using SqlCommand cmd = new SqlCommand(
+                    "UpdateHRDCardAttendanceOutTime",
+                    con);
 
 
                 cmd.CommandType = System.Data.CommandType.StoredProcedure;
@@ -200,31 +291,36 @@ namespace FacultyApi.Controllers
 
 
 
-                con.Open();
+                await con.OpenAsync();
 
 
-                result = Convert.ToInt32(cmd.ExecuteScalar());
+                result = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+
 
 
                 return Ok(new
                 {
-                    Code = result == 1 ? "200" : "500",
+                    code = result == 1 ? "200" : "500",
 
-                    Status = result == 1,
+                    status = result == 1,
 
-                    Message = result == 1
+                    message = result == 1
                         ? "Punch Out Updated Successfully"
-                        : "Punch Out Failed"
+                        : "Punch Out Failed",
+
+                    transactionStatus = result
                 });
+
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new
                 {
-                    Status = false,
-                    Message = ex.Message
+                    status = false,
+                    message = ex.Message
                 });
             }
         }
+
     }
 }
