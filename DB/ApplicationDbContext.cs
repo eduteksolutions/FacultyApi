@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using FacultyApi.model;
+using Microsoft.EntityFrameworkCore;
 
 namespace FacultyApi.Data
 
@@ -14,6 +15,7 @@ namespace FacultyApi.Data
             base.OnModelCreating(modelBuilder);
 
         }
-        
+        public DbSet<HRDCardAttendance> HRDCardAttendances { get; set; }
+
     }
 }

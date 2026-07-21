@@ -1,6 +1,8 @@
-﻿using FacultyApi.model;
+﻿using FacultyApi.Data;
+using FacultyApi.model;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace FacultyApi.Controllers
 {
@@ -9,12 +11,58 @@ namespace FacultyApi.Controllers
     public class FacultyAttendanceController : ControllerBase
     {
         private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _context;
 
-        public FacultyAttendanceController(IConfiguration configuration)
+        public FacultyAttendanceController(
+    ApplicationDbContext context,
+    IConfiguration configuration)
         {
+            _context = context;
             _configuration = configuration;
         }
+        [HttpPost]
+        [Route("GetAttendanceStatus")]
+        public async Task<IActionResult> GetAttendanceStatus([FromBody] AttendanceStatusRequest request)
+        {
+            try
+            {
+                var attendance = await _context.HRDCardAttendances
+        .FirstOrDefaultAsync(x =>
+            x.empCode == request.FacultyCd &&
+            x.UserID == request.UserId &&
+            x.aDate == request.S_Date);
 
+
+                if (attendance == null)
+                {
+                    return Ok(new
+                    {
+                        status = true,
+                        punchIn = false,
+                        punchOut = false,
+                        inTime = "--:--",
+                        outTime = "--:--",
+                        message = "No attendance found"
+                    });
+                }
+
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Attendance status loaded"
+                });
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    status = false,
+                    message = ex.Message
+                });
+            }
+        }
 
         // POST: api/FacultyAttendance/PunchIn
         [HttpPost("PunchIn")]
