@@ -13,6 +13,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(
 // ================= SERVICES =================
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
