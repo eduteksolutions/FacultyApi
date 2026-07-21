@@ -66,9 +66,11 @@ app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+
 // ================= SWAGGER =================
-//app.UseSwagger();
-//app.UseSwaggerUI();
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // ================= API =================
 app.MapControllers();
