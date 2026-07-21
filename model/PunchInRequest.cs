@@ -3,7 +3,7 @@
     public class PunchInRequest
     {
         public int FacultyCd { get; set; }
-        public string S_Date { get; set; }
+        public DateTime S_Date { get; set; }
         public string Status { get; set; }
         public string Reason { get; set; }
         public int UserId { get; set; }

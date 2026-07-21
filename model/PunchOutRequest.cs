@@ -4,7 +4,7 @@
     {
         public int FacultyCd { get; set; }
 
-        public string S_Date { get; set; } = string.Empty;
+        public DateTime S_Date { get; set; }
 
         public int UserId { get; set; }
 
