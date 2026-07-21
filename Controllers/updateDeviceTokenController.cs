@@ -24,7 +24,7 @@ namespace FacultyApi.Controllers
             con.Open();
 
             SqlCommand cmd = new SqlCommand(
-                "UPDATE HRDStaffMaster SET DeviceToken=@DeviceToken WHERE Code=@FacultyCd  and UserID=@UserID",
+                "UPDATE HRDStaffMaster SET DeviceToken=@DeviceToken WHERE id=@FacultyCd  and UserID=@UserID",
                 con);
 
             cmd.Parameters.AddWithValue("@FacultyCd", model.FacultyCd);
