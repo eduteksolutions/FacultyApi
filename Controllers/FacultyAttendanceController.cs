@@ -50,6 +50,19 @@ namespace FacultyApi.Controllers
                 return Ok(new
                 {
                     status = true,
+
+                    punchIn = attendance.inTime != null,
+
+                    punchOut = attendance.outTime != null,
+
+                    inTime = attendance.inTime != null
+        ? attendance.inTime.Value.ToString("hh:mm tt")
+        : "--:--",
+
+                    outTime = attendance.outTime != null
+        ? attendance.outTime.Value.ToString("hh:mm tt")
+        : "--:--",
+
                     message = "Attendance status loaded"
                 });
 
