@@ -1,7 +1,10 @@
-﻿using FacultyApi.@interface;
+﻿
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
+
+using FacultyApi.Services;
+using FacultyApi.Internal;
+
 
 namespace FacultyApi.Controllers
 {
@@ -11,18 +14,18 @@ namespace FacultyApi.Controllers
     {
         private readonly IGeneralCoordinatesService _service;
 
-        public GeneralCoordinatesController(
-            IGeneralCoordinatesService service)
+        public GeneralCoordinatesController(IGeneralCoordinatesService service)
         {
             _service = service;
         }
 
+        // GET: api/GeneralCoordinates/GetByUserID?userid=1
         [HttpGet("GetByUserID")]
         public IActionResult GetByUserID(int userid)
         {
-            return Ok(_service.GetByUserID(userid));
-        }
+            var result = _service.GetByUserID(userid);
 
-        // API methods here
+            return Ok(result);
+        }
     }
 }

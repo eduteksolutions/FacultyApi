@@ -1,9 +1,11 @@
-﻿namespace FacultyApi.@interface
-{
+﻿using FacultyApi.model;
 
+namespace FacultyApi.Internal
+{
     public interface IGeneralCoordinatesService
     {
-        List<object> GetByUserID(int userid);
+     
+            ApiResponse GetByUserID(int userid);
+        
     }
-
 }

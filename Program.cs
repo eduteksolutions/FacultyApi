@@ -1,5 +1,5 @@
 using FacultyApi.Data;
-using FacultyApi.@interface;
+using FacultyApi.Internal;
 using FacultyApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
