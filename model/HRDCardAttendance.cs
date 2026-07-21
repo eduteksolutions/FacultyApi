@@ -9,8 +9,7 @@ namespace FacultyApi.model
     public class HRDCardAttendance
     {
         [Key]
-        public int Id { get; set; }   // Replace with the actual primary key column
-
+      
         public int empCode { get; set; }
 
         public DateTime aDate { get; set; }
