@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using FacultyApi.@interface;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 
@@ -8,54 +9,20 @@ namespace FacultyApi.Controllers
     [Route("api/[controller]")]
     public class GeneralCoordinatesController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
+        private readonly IGeneralCoordinatesService _service;
 
-        public GeneralCoordinatesController(IConfiguration configuration)
+        public GeneralCoordinatesController(
+            IGeneralCoordinatesService service)
         {
-            _configuration = configuration;
+            _service = service;
         }
-        // GET: api/GeneralCoordinates/GetByUserID?userid=1
 
         [HttpGet("GetByUserID")]
         public IActionResult GetByUserID(int userid)
         {
-            List<object> list = new();
-
-            using SqlConnection con = new SqlConnection(
-                _configuration.GetConnectionString("DefaultConnection"));
-
-            SqlCommand cmd = new SqlCommand(@"
-        SELECT 
-            Code,
-            UserID,
-            Latitude,
-            Longitude
-        FROM edu.GeneralCoordinatesMaster
-        WHERE UserID = @UserID", con);
-
-
-            cmd.Parameters.AddWithValue("@UserID", userid);
-
-
-            con.Open();
-
-            SqlDataReader dr = cmd.ExecuteReader();
-
-
-            while (dr.Read())
-            {
-                list.Add(new
-                {
-                    Code = dr["Code"],
-                    UserID = dr["UserID"],
-                    Latitude = dr["Latitude"],
-                    Longitude = dr["Longitude"]
-                });
-            }
-
-
-            return Ok(list);
+            return Ok(_service.GetByUserID(userid));
         }
+
         // API methods here
     }
 }

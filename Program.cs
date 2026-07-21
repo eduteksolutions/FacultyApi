@@ -59,11 +59,11 @@ builder.Services.AddCors(options =>
         });
 });
 
+builder.Services.AddScoped<IGeneralCoordinatesService, GeneralCoordinatesService>();
 
 
 var app = builder.Build();
 
-builder.Services.AddScoped<IGeneralCoordinatesService, GeneralCoordinatesService>();
 // ================= MIDDLEWARE =================
 app.UseWebSockets();
 
