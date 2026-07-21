@@ -1,4 +1,6 @@
 using FacultyApi.Data;
+using FacultyApi.@interface;
+using FacultyApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -57,9 +59,11 @@ builder.Services.AddCors(options =>
         });
 });
 
+
+
 var app = builder.Build();
 
-
+builder.Services.AddScoped<IGeneralCoordinatesService, GeneralCoordinatesService>();
 // ================= MIDDLEWARE =================
 app.UseWebSockets();
 
