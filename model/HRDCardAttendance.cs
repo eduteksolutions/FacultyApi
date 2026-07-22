@@ -3,9 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FacultyApi.model
 {
-   
-
-         [Table("HRDCardAttendance")]
+    [Table("HRDCardAttendance")]
     public class HRDCardAttendance
     {
         [Key]
