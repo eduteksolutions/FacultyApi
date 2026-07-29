@@ -18,6 +18,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "FacultyApi";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "FacultyApiUsers";
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "R7v9Lp2QsT8mXk3jN6bH1cD4fG5wZaEy9uV0";
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
@@ -28,10 +32,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
 
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(
-            System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            System.Text.Encoding.UTF8.GetBytes(jwtKey))
     };
 });
 
