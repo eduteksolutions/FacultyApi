@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Google.GenAI;
 using Google.GenAI.Types;
 using Microsoft.AspNetCore.Http;
@@ -43,13 +43,11 @@ namespace FacultyApi.Controllers
         {
             try
             {
-                           string apiKey = _configuration["GeminiApiKey"]
-?? _configuration["GEMINI_API_KEY"]
-?? System.Environment.GetEnvironmentVariable("GeminiApiKey")
-?? System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
-?? string.Empty;
-
-
+                string apiKey = _configuration["GeminiApiKey"]
+                    ?? _configuration["GEMINI_API_KEY"]
+                    ?? System.Environment.GetEnvironmentVariable("GeminiApiKey")
+                    ?? System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+                    ?? string.Empty;
 
                 if (string.IsNullOrEmpty(apiKey))
                 {
@@ -82,9 +80,26 @@ namespace FacultyApi.Controllers
                     PropertyNameCaseInsensitive = true
                 };
 
-                var quiz = JsonSerializer.Deserialize<AiQuizContainer>(jsonText, jsonOptions);
+                List<AiQuestionItem> questionList = new();
 
-                if (quiz == null || quiz.Questions == null || quiz.Questions.Count == 0)
+                try
+                {
+                    var quiz = JsonSerializer.Deserialize<AiQuizContainer>(jsonText, jsonOptions);
+                    if (quiz?.Questions != null && quiz.Questions.Count > 0)
+                    {
+                        questionList = quiz.Questions;
+                    }
+                    else
+                    {
+                        questionList = JsonSerializer.Deserialize<List<AiQuestionItem>>(jsonText, jsonOptions) ?? new();
+                    }
+                }
+                catch
+                {
+                    questionList = new();
+                }
+
+                if (questionList.Count == 0)
                 {
                     return Ok(new
                     {
@@ -99,7 +114,7 @@ namespace FacultyApi.Controllers
                 await con.OpenAsync();
                 int inserted = 0;
 
-                foreach (var q in quiz.Questions)
+                foreach (var q in questionList)
                 {
                     using SqlCommand idCmd = new SqlCommand(
                         "SELECT ISNULL(MAX(qId), 0) + 1 FROM questionBank WHERE UserID = @UserID AND classCd = @ClassCd",
@@ -170,4 +185,3 @@ namespace FacultyApi.Controllers
         }
     }
 }
-
