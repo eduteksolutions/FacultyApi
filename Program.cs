@@ -1,8 +1,6 @@
 using FacultyApi.Data;
 using FacultyApi.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,25 +13,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
-    };
-});
-
-builder.Services.AddAuthorization();
 
 builder.Services.AddHttpClient();
 
@@ -55,7 +34,7 @@ builder.Services.AddScoped<IGeneralCoordinatesService, GeneralCoordinatesService
 var app = builder.Build();
 
 // ================= MIDDLEWARE =================
-// 1. Exception handler should be first to catch any crash
+// 1. Exception handler first to catch any crash
 app.UseDeveloperExceptionPage();
 
 // 2. Protocols and Security CORS
@@ -65,10 +44,6 @@ app.UseCors("AllowAll");
 // 3. Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
-
-// 4. Authentication & Authorization Pipeline
-app.UseAuthentication();
-app.UseAuthorization();
 
 // ================= API =================
 app.MapControllers();
