@@ -44,8 +44,10 @@ namespace FacultyApi.Controllers
             try
             {
                 string apiKey = _configuration["GeminiApiKey"]
-                    ?? System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
-                    ?? string.Empty;
+     ?? _configuration["GEMINI_API_KEY"]
+     ?? System.Environment.GetEnvironmentVariable("GeminiApiKey")
+     ?? System.Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+     ?? string.Empty;
 
 
 
