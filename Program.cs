@@ -1,5 +1,4 @@
 using FacultyApi.Data;
-
 using FacultyApi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +15,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -37,12 +35,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-
 builder.Services.AddHttpClient();
-// ================= GPS SERVICES =================
-
-
-
 
 // ================= CORS =================
 builder.Services.AddCors(options =>
@@ -50,38 +43,34 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll",
         policy =>
         {
-            // SetIsOriginAllowed(_ => true) allows all origins dynamically,
-            // which safely permits you to chain .AllowCredentials()
             policy.SetIsOriginAllowed(_ => true)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
-                  .AllowCredentials(); // Required for SignalR streaming
+                  .AllowCredentials();
         });
 });
 
 builder.Services.AddScoped<IGeneralCoordinatesService, GeneralCoordinatesService>();
 
-
 var app = builder.Build();
 
 // ================= MIDDLEWARE =================
-app.UseWebSockets();
-
-app.UseCors("AllowAll");
-
-app.UseAuthentication();
-app.UseAuthorization();
+// 1. Exception handler should be first to catch any crash
 app.UseDeveloperExceptionPage();
 
+// 2. Protocols and Security CORS
+app.UseWebSockets();
+app.UseCors("AllowAll");
 
-// ================= SWAGGER =================
+// 3. Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
+
+// 4. Authentication & Authorization Pipeline
+app.UseAuthentication();
+app.UseAuthorization();
 
 // ================= API =================
 app.MapControllers();
 
-// ================= SIGNALR HUB =================
-
 app.Run();
-
