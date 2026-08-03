@@ -1,70 +1,70 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using FacultyApi.Data;
-//this For Notification Servcies
-using FacultyApi.model;
+﻿using FacultyApi.model;
 using FacultyApi.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace FacultyApi.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class FacultyNotificationController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
         private readonly NotificationService _notificationService;
 
         public FacultyNotificationController(
-            ApplicationDbContext context,
+            IConfiguration configuration,
             NotificationService notificationService)
         {
-            _context = context;
+            _configuration = configuration;
             _notificationService = notificationService;
         }
 
-
-        // 📢 Send Notification To Faculty
         [HttpPost("send")]
-        public async Task<IActionResult> SendNotification(
-            [FromBody] FacultyNotificationRequest request)
+        public async Task<IActionResult> SendNotification([FromBody] FacultyNotificationRequest request)
         {
             try
             {
-                var faculty = await _context.HRDStaffMaster
-                    .FirstOrDefaultAsync(x => x.UserID == request.UserID);
+                string? deviceToken = null;
 
+                using SqlConnection con = new SqlConnection(
+                    _configuration.GetConnectionString("DefaultConnection"));
 
-                if (faculty == null)
+                await con.OpenAsync();
+
+                SqlCommand cmd = new SqlCommand(
+                    @"SELECT DeviceToken
+                      FROM HRDStaffMaster
+                      WHERE UserID = @UserID",
+                    con);
+
+                cmd.Parameters.AddWithValue("@UserID", request.UserID);
+
+                var result = await cmd.ExecuteScalarAsync();
+
+                if (result != null)
+                {
+                    deviceToken = result.ToString();
+                }
+
+                if (string.IsNullOrWhiteSpace(deviceToken))
                 {
                     return NotFound(new
                     {
                         success = false,
-                        message = "Faculty not found"
+                        message = "Faculty device token not found."
                     });
                 }
-
-
-                if (string.IsNullOrEmpty(faculty.DeviceToken))
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Faculty device token not available"
-                    });
-                }
-
 
                 await _notificationService.SendMessageAsync(
-                    faculty.DeviceToken,
+                    deviceToken,
                     request.Title,
-                    request.Message
-                );
-
+                    request.Message);
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Notification sent successfully"
+                    message = "Notification sent successfully."
                 });
             }
             catch (Exception ex)
