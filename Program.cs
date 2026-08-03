@@ -1,8 +1,13 @@
 using FacultyApi.Data;
 using FacultyApi.Services;
 using Microsoft.EntityFrameworkCore;
-
 var builder = WebApplication.CreateBuilder(args);
+
+var cs = builder.Configuration.GetConnectionString("DefaultConnection");
+
+Console.WriteLine("DefaultConnection Loaded: " +
+                  (!string.IsNullOrEmpty(cs)));
+
 
 // ================= DB =================
 builder.Services.AddDbContext<ApplicationDbContext>(
