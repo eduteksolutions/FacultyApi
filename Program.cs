@@ -3,11 +3,14 @@ using FacultyApi.Services;
 using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddEnvironmentVariables();
 var cs = builder.Configuration.GetConnectionString("DefaultConnection");
 
 Console.WriteLine("DefaultConnection Loaded: " +
                   (!string.IsNullOrEmpty(cs)));
+var envValue = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
 
+Console.WriteLine("ENV VARIABLE EXISTS: " + !string.IsNullOrEmpty(envValue));
 
 // ================= DB =================
 builder.Services.AddDbContext<ApplicationDbContext>(
