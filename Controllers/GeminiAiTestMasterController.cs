@@ -58,6 +58,7 @@ namespace FacultyApi.Controllers
                     });
                 }
 
+                // Explicitly initialize with the API key for the Developer API
                 var client = new Client(apiKey: apiKey);
 
                 string prompt = $"Generate {count} multiple-choice test questions about {topic}. Provide 4 options and clearly state the correct answer.";

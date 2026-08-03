@@ -16,6 +16,6 @@ namespace FacultyApi.Data
 
         }
         public DbSet<HRDCardAttendance> HRDCardAttendances { get; set; }
-
+        public DbSet<HRDStaffMaster> HRDStaffMaster { get; set; }
     }
 }
