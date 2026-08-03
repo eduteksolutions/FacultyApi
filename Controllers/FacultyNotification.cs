@@ -19,7 +19,15 @@ namespace FacultyApi.Controllers
             _configuration = configuration;
             _notificationService = notificationService;
         }
-
+        [HttpGet("version")]
+        public IActionResult Version()
+        {
+            return Ok(new
+            {
+                version = "FacultyNotificationController-v2",
+                time = DateTime.Now
+            });
+        }
         [HttpPost("send")]
         public async Task<IActionResult> SendNotification([FromBody] FacultyNotificationRequest request)
         {
