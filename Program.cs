@@ -9,6 +9,7 @@ if (string.IsNullOrEmpty(connectionString))
 {
     throw new Exception("DefaultConnection is missing");
 }
+builder.Configuration.GetConnectionString("DefaultConnection");
 
 // ================= DB =================
 builder.Services.AddDbContext<ApplicationDbContext>(
