@@ -30,7 +30,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<IGeneralCoordinatesService, GeneralCoordinatesService>();
-
+builder.Services.AddScoped<NotificationService>();
 var app = builder.Build();
 
 // ================= MIDDLEWARE =================
