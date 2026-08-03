@@ -5,9 +5,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 
 // ================= DB =================
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not configured.");
+
 builder.Services.AddDbContext<ApplicationDbContext>(
-    options => options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+    options => options.UseSqlServer(connectionString));
 
 // ================= SERVICES =================
 builder.Services.AddControllers();
