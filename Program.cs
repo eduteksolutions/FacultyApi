@@ -3,6 +3,12 @@ using FacultyApi.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new Exception("DefaultConnection is missing");
+}
 
 // ================= DB =================
 builder.Services.AddDbContext<ApplicationDbContext>(
