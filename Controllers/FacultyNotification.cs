@@ -25,8 +25,6 @@ namespace FacultyApi.Controllers
         {
             try
             {
-                string? deviceToken = null;
-
                 using SqlConnection con = new SqlConnection(
                     _configuration.GetConnectionString("DefaultConnection"));
 
@@ -34,37 +32,53 @@ namespace FacultyApi.Controllers
 
                 SqlCommand cmd = new SqlCommand(
                     @"SELECT DeviceToken
-                      FROM HRDStaffMaster
-                      WHERE UserID = @UserID",
+          FROM HRDStaffMaster
+          WHERE UserID = @UserID
+          AND DeviceToken IS NOT NULL",
                     con);
 
                 cmd.Parameters.AddWithValue("@UserID", request.UserID);
 
-                var result = await cmd.ExecuteScalarAsync();
 
-                if (result != null)
+                List<string> deviceTokens = new List<string>();
+
+                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
                 {
-                    deviceToken = result.ToString();
+                    string? token = reader["DeviceToken"]?.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(token))
+                    {
+                        deviceTokens.Add(token);
+                    }
                 }
 
-                if (string.IsNullOrWhiteSpace(deviceToken))
+
+                if (deviceTokens.Count == 0)
                 {
                     return NotFound(new
                     {
                         success = false,
-                        message = "Faculty device token not found."
+                        message = "No faculty device tokens found."
                     });
                 }
 
-                await _notificationService.SendMessageAsync(
-                    deviceToken,
-                    request.Title,
-                    request.Message);
+
+                foreach (var token in deviceTokens)
+                {
+                    await _notificationService.SendMessageAsync(
+                        token,
+                        request.Title,
+                        request.Message
+                    );
+                }
+
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Notification sent successfully."
+                    message = $"{deviceTokens.Count} faculty notifications sent successfully."
                 });
             }
             catch (Exception ex)
