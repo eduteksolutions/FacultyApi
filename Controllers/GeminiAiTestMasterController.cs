@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Google.GenAI;
 using Google.GenAI.Types;
 using Microsoft.AspNetCore.Http;
@@ -186,3 +186,4 @@ namespace FacultyApi.Controllers
         }
     }
 }
+
