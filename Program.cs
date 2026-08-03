@@ -5,9 +5,11 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // ================= DB =================
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Server=localhost;Database=FacultyApi;User Id=sa;Password=YourPassword123!;";
+
 builder.Services.AddDbContext<ApplicationDbContext>(
-    options => options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+    options => options.UseSqlServer(connectionString));
 
 // ================= SERVICES =================
 builder.Services.AddControllers();
