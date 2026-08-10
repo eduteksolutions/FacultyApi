@@ -2,6 +2,7 @@
 using FacultyApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 
 namespace FacultyApi.Controllers
 {
@@ -122,7 +123,111 @@ namespace FacultyApi.Controllers
                 });
             }
         }
+        [HttpPost("markAsRead/{id}")]
+        public async Task<IActionResult> MarkAsRead(int id)
+        {
+            try
+            {
+                using SqlConnection con = new SqlConnection(
+                    _configuration.GetConnectionString("DefaultConnection"));
+
+                await con.OpenAsync();
+
+                SqlCommand cmd = new SqlCommand(
+                    "UPDATE TableFacultyNotificationLogs SET IsRead = 1 WHERE Id = @Id",
+                    con);
+
+                cmd.Parameters.AddWithValue("@Id", id);
+                await cmd.ExecuteNonQueryAsync();
+
+                return Ok(new { success = true, message = "Marked as read." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpGet("unreadCount/{userId}")]
+        public async Task<IActionResult> GetUnreadCount(string userId)
+        {
+            try
+            {
+                using SqlConnection con = new SqlConnection(
+                    _configuration.GetConnectionString("DefaultConnection"));
+
+                await con.OpenAsync();
+
+                SqlCommand cmd = new SqlCommand(
+                    @"SELECT COUNT(*) 
+                      FROM TableFacultyNotificationLogs 
+                      WHERE UserID = @UserID AND (IsRead = 0 OR IsRead IS NULL)",
+                    con);
+
+                cmd.Parameters.AddWithValue("@UserID", userId);
+                int count = (int)await cmd.ExecuteScalarAsync();
+
+                return Ok(new { success = true, unreadCount = count });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+
+        [HttpGet("facultyNotificationlogs/{userId}")]
+    public async Task<IActionResult> GetFacultyNotificationLogs(string userId)
+    {
+        try
+        {
+            using SqlConnection con = new SqlConnection(
+                _configuration.GetConnectionString("DefaultConnection"));
+
+            await con.OpenAsync();
+
+            SqlCommand cmd = new SqlCommand(
+                @"SELECT Id, UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt
+                      FROM TableFacultyNotificationLogs
+                      WHERE UserID = @UserID
+                      ORDER BY CreatedAt DESC",
+                con);
+
+            cmd.Parameters.AddWithValue("@UserID", userId);
+
+            List<object> logs = new List<object>();
+
+            using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                logs.Add(new
+                {
+                    Id = reader["Id"],
+                    UserID = reader["UserID"]?.ToString(),
+                    Title = reader["Title"]?.ToString(),
+                    Message = reader["Message"]?.ToString(),
+                    DeviceToken = reader["DeviceToken"]?.ToString(),
+                    Status = reader["Status"]?.ToString(),
+                    ErrorMessage = reader["ErrorMessage"]?.ToString(),
+                    CreatedAt = reader["CreatedAt"],
+                    IsRead = reader["IsRead"] != DBNull.Value && Convert.ToBoolean(reader["IsRead"])
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                data = logs
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
     }
-
-
+}
 }
