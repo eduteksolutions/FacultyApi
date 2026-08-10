@@ -94,7 +94,7 @@ namespace FacultyApi.Controllers
                     }
 
                     string insertLogQuery = @"
-                INSERT INTO TableFacultyNotificationLogs (UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt)
+                INSERT INTO FacultyNotificationLogs (UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt)
                 VALUES (@UserID, @Title, @Message, @DeviceToken, @Status, @ErrorMessage, GETDATE())";
 
                     using SqlCommand logCmd = new SqlCommand(insertLogQuery, con);
@@ -134,7 +134,7 @@ namespace FacultyApi.Controllers
                 await con.OpenAsync();
 
                 SqlCommand cmd = new SqlCommand(
-                    "UPDATE TableFacultyNotificationLogs SET IsRead = 1 WHERE Id = @Id",
+                    "UPDATE FacultyNotificationLogs SET IsRead = 1 WHERE Id = @Id",
                     con);
 
                 cmd.Parameters.AddWithValue("@Id", id);
@@ -160,7 +160,7 @@ namespace FacultyApi.Controllers
 
                 SqlCommand cmd = new SqlCommand(
                     @"SELECT COUNT(*) 
-                      FROM TableFacultyNotificationLogs 
+                      FROM FacultyNotificationLogs 
                       WHERE UserID = @UserID AND (IsRead = 0 OR IsRead IS NULL)",
                     con);
 
