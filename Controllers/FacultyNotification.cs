@@ -188,7 +188,7 @@ namespace FacultyApi.Controllers
 
             SqlCommand cmd = new SqlCommand(
                 @"SELECT Id, UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt
-                      FROM TableFacultyNotificationLogs
+                      FROM FacultyNotificationLogs
                       WHERE UserID = @UserID
                       ORDER BY CreatedAt DESC",
                 con);
