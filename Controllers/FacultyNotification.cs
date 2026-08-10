@@ -20,6 +20,7 @@ namespace FacultyApi.Controllers
             _configuration = configuration;
             _notificationService = notificationService;
         }
+
         [HttpGet("version")]
         public IActionResult Version()
         {
@@ -29,6 +30,7 @@ namespace FacultyApi.Controllers
                 time = DateTime.Now
             });
         }
+
         [HttpPost("send")]
         public async Task<IActionResult> SendNotification([FromBody] FacultyNotificationRequest request)
         {
@@ -39,28 +41,29 @@ namespace FacultyApi.Controllers
 
                 await con.OpenAsync();
 
-                SqlCommand cmd = new SqlCommand(
-                    @"SELECT DeviceToken
-              FROM HRDStaffMaster
-              WHERE UserID = @UserID
-              AND DeviceToken IS NOT NULL",
-                    con);
-
-                cmd.Parameters.AddWithValue("@UserID", request.UserID);
-
                 List<string> deviceTokens = new List<string>();
 
-                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
-
-                while (await reader.ReadAsync())
+                // Scoped block to ensure the reader closes immediately after fetching tokens
                 {
-                    string? token = reader["DeviceToken"]?.ToString();
+                    SqlCommand cmd = new SqlCommand(
+                        @"SELECT DeviceToken
+                      FROM HRDStaffMaster
+                      WHERE UserID = @UserID
+                      AND DeviceToken IS NOT NULL",
+                        con);
 
-                    if (!string.IsNullOrWhiteSpace(token))
+                    cmd.Parameters.AddWithValue("@UserID", request.UserID);
+
+                    using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
                     {
-                        deviceTokens.Add(token);
+                        string? token = reader["DeviceToken"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(token))
+                        {
+                            deviceTokens.Add(token);
+                        }
                     }
-                }
+                } // <-- Reader is completely disposed here, freeing up the connection!
 
                 if (deviceTokens.Count == 0)
                 {
@@ -94,8 +97,8 @@ namespace FacultyApi.Controllers
                     }
 
                     string insertLogQuery = @"
-                INSERT INTO FacultyNotificationLogs (UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt)
-                VALUES (@UserID, @Title, @Message, @DeviceToken, @Status, @ErrorMessage, GETDATE())";
+                    INSERT INTO FacultyNotificationLogs (UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt, IsRead)
+                    VALUES (@UserID, @Title, @Message, @DeviceToken, @Status, @ErrorMessage, GETDATE(), 0)";
 
                     using SqlCommand logCmd = new SqlCommand(insertLogQuery, con);
                     logCmd.Parameters.AddWithValue("@UserID", request.UserID);
@@ -123,6 +126,7 @@ namespace FacultyApi.Controllers
                 });
             }
         }
+
         [HttpPost("markAsRead/{id}")]
         public async Task<IActionResult> MarkAsRead(int id)
         {
@@ -160,8 +164,8 @@ namespace FacultyApi.Controllers
 
                 SqlCommand cmd = new SqlCommand(
                     @"SELECT COUNT(*) 
-                      FROM FacultyNotificationLogs 
-                      WHERE UserID = @UserID AND (IsRead = 0 OR IsRead IS NULL)",
+                  FROM FacultyNotificationLogs 
+                  WHERE UserID = @UserID AND (IsRead = 0 OR IsRead IS NULL)",
                     con);
 
                 cmd.Parameters.AddWithValue("@UserID", userId);
@@ -175,59 +179,59 @@ namespace FacultyApi.Controllers
             }
         }
 
-
         [HttpGet("facultyNotificationlogs/{userId}")]
-    public async Task<IActionResult> GetFacultyNotificationLogs(string userId)
-    {
-        try
+        public async Task<IActionResult> GetFacultyNotificationLogs(string userId)
         {
-            using SqlConnection con = new SqlConnection(
-                _configuration.GetConnectionString("DefaultConnection"));
-
-            await con.OpenAsync();
-
-            SqlCommand cmd = new SqlCommand(
-                @"SELECT Id, UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt
-                      FROM FacultyNotificationLogs
-                      WHERE UserID = @UserID
-                      ORDER BY CreatedAt DESC",
-                con);
-
-            cmd.Parameters.AddWithValue("@UserID", userId);
-
-            List<object> logs = new List<object>();
-
-            using SqlDataReader reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            try
             {
-                logs.Add(new
+                using SqlConnection con = new SqlConnection(
+                    _configuration.GetConnectionString("DefaultConnection"));
+
+                await con.OpenAsync();
+
+                // Added IsRead to the SELECT statement
+                SqlCommand cmd = new SqlCommand(
+                    @"SELECT Id, UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt, IsRead
+                  FROM FacultyNotificationLogs
+                  WHERE UserID = @UserID
+                  ORDER BY CreatedAt DESC",
+                    con);
+
+                cmd.Parameters.AddWithValue("@UserID", userId);
+
+                List<object> logs = new List<object>();
+
+                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
-                    Id = reader["Id"],
-                    UserID = reader["UserID"]?.ToString(),
-                    Title = reader["Title"]?.ToString(),
-                    Message = reader["Message"]?.ToString(),
-                    DeviceToken = reader["DeviceToken"]?.ToString(),
-                    Status = reader["Status"]?.ToString(),
-                    ErrorMessage = reader["ErrorMessage"]?.ToString(),
-                    CreatedAt = reader["CreatedAt"],
-                    IsRead = reader["IsRead"] != DBNull.Value && Convert.ToBoolean(reader["IsRead"])
+                    logs.Add(new
+                    {
+                        Id = reader["Id"],
+                        UserID = reader["UserID"]?.ToString(),
+                        Title = reader["Title"]?.ToString(),
+                        Message = reader["Message"]?.ToString(),
+                        DeviceToken = reader["DeviceToken"]?.ToString(),
+                        Status = reader["Status"]?.ToString(),
+                        ErrorMessage = reader["ErrorMessage"]?.ToString(),
+                        CreatedAt = reader["CreatedAt"],
+                        IsRead = reader["IsRead"] != DBNull.Value && Convert.ToBoolean(reader["IsRead"])
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    data = logs
                 });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                success = true,
-                data = logs
-            });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new
-            {
-                success = false,
-                error = ex.Message
-            });
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = ex.Message
+                });
+            }
         }
     }
-}
 }
