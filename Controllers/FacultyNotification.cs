@@ -104,7 +104,7 @@ namespace FacultyApi.Controllers
                         INSERT INTO FacultyNotificationLogs 
                         (UserID, code,  Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead)
                         VALUES 
-                        (@UserID, @id,  @Title, @Message, @DeviceToken, @Status, @ErrorMessage, @Version, GETDATE(), 0)";
+                        (@UserID, @code,  @Title, @Message, @DeviceToken, @Status, @ErrorMessage, @Version, GETDATE(), 0)";
 
                     using SqlCommand logCmd = new SqlCommand(insertLogQuery, con);
                     logCmd.Parameters.AddWithValue("@UserID", string.IsNullOrEmpty(request.UserID) ? (object)DBNull.Value : request.UserID);
