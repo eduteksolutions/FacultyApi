@@ -227,8 +227,8 @@ namespace FacultyApi.Controllers
                     {
                         Id = reader["Id"],
                         UserID = reader["UserID"]?.ToString(),
-                        StaffId = reader["StaffId"] != DBNull.Value ? reader["StaffId"] : null,
-                        StaffCode = reader["StaffCode"]?.ToString(),
+                        StaffId = reader["Id"] != DBNull.Value ? reader["Id"] : null,
+                        StaffCode = reader["Code"]?.ToString(),
                         Title = reader["Title"]?.ToString(),
                         Message = reader["Message"]?.ToString(),
                         DeviceToken = reader["DeviceToken"]?.ToString(),
