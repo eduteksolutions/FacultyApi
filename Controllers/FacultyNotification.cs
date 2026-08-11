@@ -33,10 +33,20 @@ namespace FacultyApi.Controllers
         }
 
         [HttpPost("send")]
-        public async Task<IActionResult> SendNotification([FromBody] FacultyNotificationRequest request)
+        public async Task<IActionResult> SendNotification(
+    [FromBody] FacultyNotificationRequest request)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(request.UserID))
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "UserID is required."
+                    });
+                }
+
                 using SqlConnection con = new SqlConnection(
                     _configuration.GetConnectionString("DefaultConnection"));
 
@@ -44,26 +54,30 @@ namespace FacultyApi.Controllers
 
                 var staffRecs = new List<(string DeviceToken, int StaffId, string Code)>();
 
+                // Get ALL device tokens for this UserID
+                using (SqlCommand cmd = new SqlCommand(@"
+            SELECT DeviceToken, id, code
+            FROM HRDStaffMaster
+            WHERE UserID = @UserID
+              AND DeviceToken IS NOT NULL
+              AND LTRIM(RTRIM(DeviceToken)) <> ''", con))
                 {
-                    SqlCommand cmd = new SqlCommand(
-                        @"SELECT DeviceToken, id, code
-                        FROM HRDStaffMaster
-                        WHERE (@UserID IS NULL OR UserID = @UserID)
-                          AND (@Code IS NULL OR code = @Code)
-                          AND DeviceToken IS NOT NULL",
-                        con);
-
-                    cmd.Parameters.AddWithValue("@UserID", string.IsNullOrEmpty(request.UserID) ? (object)DBNull.Value : request.UserID);
-                    cmd.Parameters.AddWithValue("@Code", string.IsNullOrEmpty(request.Code) ? (object)DBNull.Value : request.Code);
+                    cmd.Parameters.AddWithValue("@UserID", request.UserID.Trim());
 
                     using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+
                     while (await reader.ReadAsync())
                     {
                         string? token = reader["DeviceToken"]?.ToString();
+
                         if (!string.IsNullOrWhiteSpace(token))
                         {
-                            int staffId = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
-                            string code = reader["code"]?.ToString() ?? string.Empty;
+                            int staffId = reader["id"] != DBNull.Value
+                                ? Convert.ToInt32(reader["id"])
+                                : 0;
+
+                            string code = reader["code"]?.ToString() ?? "";
+
                             staffRecs.Add((token, staffId, code));
                         }
                     }
@@ -74,12 +88,14 @@ namespace FacultyApi.Controllers
                     return NotFound(new
                     {
                         success = false,
-                        message = "No faculty device tokens found for the provided criteria."
+                        message = $"No device tokens found for UserID {request.UserID}."
                     });
                 }
 
                 int successCount = 0;
+                int failedCount = 0;
 
+                // Send to ALL devices of UserID
                 foreach (var staff in staffRecs)
                 {
                     string status = "Success";
@@ -92,29 +108,80 @@ namespace FacultyApi.Controllers
                             request.Title,
                             request.Message
                         );
+
                         successCount++;
                     }
                     catch (Exception ex)
                     {
                         status = "Failed";
                         errorMessage = ex.Message;
+                        failedCount++;
                     }
 
-                    string insertLogQuery = @"
-                        INSERT INTO FacultyNotificationLogs 
-                        (UserID, code,  Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead)
-                        VALUES 
-                        (@UserID, @code,  @Title, @Message, @DeviceToken, @Status, @ErrorMessage, @Version, GETDATE(), 0)";
+                    // Save notification log
+                    using SqlCommand logCmd = new SqlCommand(@"
+                INSERT INTO FacultyNotificationLogs
+                (
+                    UserID,
+                    code,
+                    Title,
+                    Message,
+                    DeviceToken,
+                    Status,
+                    ErrorMessage,
+                    Version,
+                    CreatedAt,
+                    IsRead
+                )
+                VALUES
+                (
+                    @UserID,
+                    @Code,
+                    @Title,
+                    @Message,
+                    @DeviceToken,
+                    @Status,
+                    @ErrorMessage,
+                    @Version,
+                    GETDATE(),
+                    0
+                )", con);
 
-                    using SqlCommand logCmd = new SqlCommand(insertLogQuery, con);
-                    logCmd.Parameters.AddWithValue("@UserID", string.IsNullOrEmpty(request.UserID) ? (object)DBNull.Value : request.UserID);
-                    logCmd.Parameters.AddWithValue("@code", staff.StaffId > 0 ? staff.StaffId : (object)DBNull.Value);
-                    logCmd.Parameters.AddWithValue("@Title", request.Title ?? (object)DBNull.Value);
-                    logCmd.Parameters.AddWithValue("@Message", request.Message ?? (object)DBNull.Value);
-                    logCmd.Parameters.AddWithValue("@DeviceToken", staff.DeviceToken);
-                    logCmd.Parameters.AddWithValue("@Status", status);
-                    logCmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(errorMessage) ? (object)DBNull.Value : errorMessage);
-                    logCmd.Parameters.AddWithValue("@Version", ApiVersion);
+                    logCmd.Parameters.AddWithValue(
+                        "@UserID",
+                        request.UserID);
+
+                    logCmd.Parameters.AddWithValue(
+                        "@Code",
+                        string.IsNullOrEmpty(staff.Code)
+                            ? (object)DBNull.Value
+                            : staff.Code);
+
+                    logCmd.Parameters.AddWithValue(
+                        "@Title",
+                        request.Title ?? (object)DBNull.Value);
+
+                    logCmd.Parameters.AddWithValue(
+                        "@Message",
+                        request.Message ?? (object)DBNull.Value);
+
+                    logCmd.Parameters.AddWithValue(
+                        "@DeviceToken",
+                        staff.DeviceToken);
+
+                    logCmd.Parameters.AddWithValue(
+                        "@Status",
+                        status);
+
+                    logCmd.Parameters.AddWithValue(
+                        "@ErrorMessage",
+                        string.IsNullOrEmpty(errorMessage)
+                            ? (object)DBNull.Value
+                            : errorMessage);
+
+                    logCmd.Parameters.AddWithValue(
+                        "@Version",
+                        ApiVersion);
 
                     await logCmd.ExecuteNonQueryAsync();
                 }
@@ -122,7 +189,12 @@ namespace FacultyApi.Controllers
                 return Ok(new
                 {
                     success = true,
-                    message = $"{successCount} of {staffRecs.Count} faculty notifications processed successfully."
+                    userID = request.UserID,
+                    totalDevices = staffRecs.Count,
+                    successCount,
+                    failedCount,
+                    message =
+                        $"{successCount} of {staffRecs.Count} devices received the notification."
                 });
             }
             catch (Exception ex)
@@ -130,6 +202,7 @@ namespace FacultyApi.Controllers
                 return StatusCode(500, new
                 {
                     success = false,
+                    message = "Error sending notification.",
                     error = ex.Message
                 });
             }
