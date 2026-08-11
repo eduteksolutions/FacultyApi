@@ -207,7 +207,7 @@ namespace FacultyApi.Controllers
                 int? parsedId = int.TryParse(id, out int idVal) ? idVal : (int?)null;
 
                 SqlCommand cmd = new SqlCommand(
-                    @"SELECT Id, UserID, StaffId, StaffCode, Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead
+                    @"SELECT Id, UserID, id, code, Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead
             FROM FacultyNotificationLogs
             WHERE UserID = @SchoolId 
               AND (id = @Id OR (@ParsedId IS NOT NULL AND id = @ParsedId))
