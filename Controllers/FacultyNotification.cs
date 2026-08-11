@@ -102,13 +102,13 @@ namespace FacultyApi.Controllers
 
                     string insertLogQuery = @"
                         INSERT INTO FacultyNotificationLogs 
-                        (UserID, id,  Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead)
+                        (UserID, code,  Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead)
                         VALUES 
                         (@UserID, @id,  @Title, @Message, @DeviceToken, @Status, @ErrorMessage, @Version, GETDATE(), 0)";
 
                     using SqlCommand logCmd = new SqlCommand(insertLogQuery, con);
                     logCmd.Parameters.AddWithValue("@UserID", string.IsNullOrEmpty(request.UserID) ? (object)DBNull.Value : request.UserID);
-                    logCmd.Parameters.AddWithValue("@Id", staff.StaffId > 0 ? staff.StaffId : (object)DBNull.Value);
+                    logCmd.Parameters.AddWithValue("@code", staff.StaffId > 0 ? staff.StaffId : (object)DBNull.Value);
                     logCmd.Parameters.AddWithValue("@Title", request.Title ?? (object)DBNull.Value);
                     logCmd.Parameters.AddWithValue("@Message", request.Message ?? (object)DBNull.Value);
                     logCmd.Parameters.AddWithValue("@DeviceToken", staff.DeviceToken);
