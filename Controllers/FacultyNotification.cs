@@ -7,11 +7,12 @@ using Microsoft.Extensions.Configuration;
 namespace FacultyApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     public class FacultyNotificationController : ControllerBase
     {
         private readonly IConfiguration _configuration;
         private readonly NotificationService _notificationService;
+        private const string ApiVersion = "v1";
 
         public FacultyNotificationController(
             IConfiguration configuration,
@@ -26,7 +27,7 @@ namespace FacultyApi.Controllers
         {
             return Ok(new
             {
-                version = "FacultyNotificationController-v2",
+                version = $"FacultyNotificationController-{ApiVersion}",
                 time = DateTime.Now
             });
         }
@@ -41,18 +42,19 @@ namespace FacultyApi.Controllers
 
                 await con.OpenAsync();
 
-                List<string> deviceTokens = new List<string>();
+                var staffRecs = new List<(string DeviceToken, int StaffId, string Code)>();
 
-                // Scoped block to ensure the reader closes immediately after fetching tokens
                 {
                     SqlCommand cmd = new SqlCommand(
-                        @"SELECT DeviceToken
-                      FROM HRDStaffMaster
-                      WHERE UserID = @UserID
-                      AND DeviceToken IS NOT NULL",
+                        @"SELECT DeviceToken, id, code
+                        FROM HRDStaffMaster
+                        WHERE (@UserID IS NULL OR UserID = @UserID)
+                          AND (@Code IS NULL OR code = @Code)
+                          AND DeviceToken IS NOT NULL",
                         con);
 
-                    cmd.Parameters.AddWithValue("@UserID", request.UserID);
+                    cmd.Parameters.AddWithValue("@UserID", string.IsNullOrEmpty(request.UserID) ? (object)DBNull.Value : request.UserID);
+                    cmd.Parameters.AddWithValue("@Code", string.IsNullOrEmpty(request.Code) ? (object)DBNull.Value : request.Code);
 
                     using SqlDataReader reader = await cmd.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
@@ -60,23 +62,25 @@ namespace FacultyApi.Controllers
                         string? token = reader["DeviceToken"]?.ToString();
                         if (!string.IsNullOrWhiteSpace(token))
                         {
-                            deviceTokens.Add(token);
+                            int staffId = reader["id"] != DBNull.Value ? Convert.ToInt32(reader["id"]) : 0;
+                            string code = reader["code"]?.ToString() ?? string.Empty;
+                            staffRecs.Add((token, staffId, code));
                         }
                     }
-                } // <-- Reader is completely disposed here, freeing up the connection!
+                }
 
-                if (deviceTokens.Count == 0)
+                if (staffRecs.Count == 0)
                 {
                     return NotFound(new
                     {
                         success = false,
-                        message = "No faculty device tokens found."
+                        message = "No faculty device tokens found for the provided criteria."
                     });
                 }
 
                 int successCount = 0;
 
-                foreach (var token in deviceTokens)
+                foreach (var staff in staffRecs)
                 {
                     string status = "Success";
                     string? errorMessage = null;
@@ -84,7 +88,7 @@ namespace FacultyApi.Controllers
                     try
                     {
                         await _notificationService.SendMessageAsync(
-                            token,
+                            staff.DeviceToken,
                             request.Title,
                             request.Message
                         );
@@ -97,16 +101,20 @@ namespace FacultyApi.Controllers
                     }
 
                     string insertLogQuery = @"
-                    INSERT INTO FacultyNotificationLogs (UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt, IsRead)
-                    VALUES (@UserID, @Title, @Message, @DeviceToken, @Status, @ErrorMessage, GETDATE(), 0)";
+                        INSERT INTO FacultyNotificationLogs 
+                        (UserID, StaffId, StaffCode, Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead)
+                        VALUES 
+                        (@UserID, @id, , @Title, @Message, @DeviceToken, @Status, @ErrorMessage, @Version, GETDATE(), 0)";
 
                     using SqlCommand logCmd = new SqlCommand(insertLogQuery, con);
-                    logCmd.Parameters.AddWithValue("@UserID", request.UserID);
+                    logCmd.Parameters.AddWithValue("@UserID", string.IsNullOrEmpty(request.UserID) ? (object)DBNull.Value : request.UserID);
+                    logCmd.Parameters.AddWithValue("@Id", staff.StaffId > 0 ? staff.StaffId : (object)DBNull.Value);
                     logCmd.Parameters.AddWithValue("@Title", request.Title ?? (object)DBNull.Value);
                     logCmd.Parameters.AddWithValue("@Message", request.Message ?? (object)DBNull.Value);
-                    logCmd.Parameters.AddWithValue("@DeviceToken", token);
+                    logCmd.Parameters.AddWithValue("@DeviceToken", staff.DeviceToken);
                     logCmd.Parameters.AddWithValue("@Status", status);
                     logCmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(errorMessage) ? (object)DBNull.Value : errorMessage);
+                    logCmd.Parameters.AddWithValue("@Version", ApiVersion);
 
                     await logCmd.ExecuteNonQueryAsync();
                 }
@@ -114,7 +122,7 @@ namespace FacultyApi.Controllers
                 return Ok(new
                 {
                     success = true,
-                    message = $"{successCount} of {deviceTokens.Count} faculty notifications processed successfully."
+                    message = $"{successCount} of {staffRecs.Count} faculty notifications processed successfully."
                 });
             }
             catch (Exception ex)
@@ -128,7 +136,7 @@ namespace FacultyApi.Controllers
         }
 
         [HttpPost("markAsRead/{id}")]
-        public async Task<IActionResult> MarkAsRead(int id)
+        public async Task<IActionResult> MarkAsRead(int id,int userid)
         {
             try
             {
@@ -138,7 +146,7 @@ namespace FacultyApi.Controllers
                 await con.OpenAsync();
 
                 SqlCommand cmd = new SqlCommand(
-                    "UPDATE FacultyNotificationLogs SET IsRead = 1 WHERE Id = @Id",
+                    "UPDATE FacultyNotificationLogs SET IsRead = 1 WHERE Id = @Id  and userid=@userid",
                     con);
 
                 cmd.Parameters.AddWithValue("@Id", id);
@@ -152,8 +160,8 @@ namespace FacultyApi.Controllers
             }
         }
 
-        [HttpGet("unreadCount/{userId}")]
-        public async Task<IActionResult> GetUnreadCount(string userId)
+        [HttpGet("unreadCount/{schoolid}/{id}")]
+        public async Task<IActionResult> GetUnreadCount(string schoolid, string id)
         {
             try
             {
@@ -162,13 +170,20 @@ namespace FacultyApi.Controllers
 
                 await con.OpenAsync();
 
+                int? parsedId = int.TryParse(id, out int idVal) ? idVal : (int?)null;
+
                 SqlCommand cmd = new SqlCommand(
                     @"SELECT COUNT(*) 
-                  FROM FacultyNotificationLogs 
-                  WHERE UserID = @UserID AND (IsRead = 0 OR IsRead IS NULL)",
+            FROM FacultyNotificationLogs 
+            WHERE UserID = @SchoolId 
+              AND (id = @Id OR (@ParsedId IS NOT NULL AND id = @ParsedId)) 
+              AND (IsRead = 0 OR IsRead IS NULL)",
                     con);
 
-                cmd.Parameters.AddWithValue("@UserID", userId);
+                cmd.Parameters.AddWithValue("@SchoolId", schoolid);
+                cmd.Parameters.AddWithValue("@Id", id);
+                cmd.Parameters.AddWithValue("@ParsedId", parsedId ?? (object)DBNull.Value);
+
                 int count = (int)await cmd.ExecuteScalarAsync();
 
                 return Ok(new { success = true, unreadCount = count });
@@ -179,8 +194,8 @@ namespace FacultyApi.Controllers
             }
         }
 
-        [HttpGet("facultyNotificationlogs/{userId}")]
-        public async Task<IActionResult> GetFacultyNotificationLogs(string userId)
+        [HttpGet("facultyNotificationlogs/{schoolid}/{id}")]
+        public async Task<IActionResult> GetFacultyNotificationLogs(string schoolid, string id)
         {
             try
             {
@@ -189,15 +204,19 @@ namespace FacultyApi.Controllers
 
                 await con.OpenAsync();
 
-                // Added IsRead to the SELECT statement
+                int? parsedId = int.TryParse(id, out int idVal) ? idVal : (int?)null;
+
                 SqlCommand cmd = new SqlCommand(
-                    @"SELECT Id, UserID, Title, Message, DeviceToken, Status, ErrorMessage, CreatedAt, IsRead
-                  FROM FacultyNotificationLogs
-                  WHERE UserID = @UserID
-                  ORDER BY CreatedAt DESC",
+                    @"SELECT Id, UserID, StaffId, StaffCode, Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead
+            FROM FacultyNotificationLogs
+            WHERE UserID = @SchoolId 
+              AND (id = @Id OR (@ParsedId IS NOT NULL AND id = @ParsedId))
+            ORDER BY CreatedAt DESC",
                     con);
 
-                cmd.Parameters.AddWithValue("@UserID", userId);
+                cmd.Parameters.AddWithValue("@SchoolId", schoolid);
+                cmd.Parameters.AddWithValue("@Id", id);
+                cmd.Parameters.AddWithValue("@ParsedId", parsedId ?? (object)DBNull.Value);
 
                 List<object> logs = new List<object>();
 
@@ -208,11 +227,14 @@ namespace FacultyApi.Controllers
                     {
                         Id = reader["Id"],
                         UserID = reader["UserID"]?.ToString(),
+                        StaffId = reader["StaffId"] != DBNull.Value ? reader["StaffId"] : null,
+                        StaffCode = reader["StaffCode"]?.ToString(),
                         Title = reader["Title"]?.ToString(),
                         Message = reader["Message"]?.ToString(),
                         DeviceToken = reader["DeviceToken"]?.ToString(),
                         Status = reader["Status"]?.ToString(),
                         ErrorMessage = reader["ErrorMessage"]?.ToString(),
+                        Version = reader["Version"]?.ToString(),
                         CreatedAt = reader["CreatedAt"],
                         IsRead = reader["IsRead"] != DBNull.Value && Convert.ToBoolean(reader["IsRead"])
                     });
