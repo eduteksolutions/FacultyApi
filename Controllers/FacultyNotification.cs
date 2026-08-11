@@ -102,7 +102,7 @@ namespace FacultyApi.Controllers
 
                     string insertLogQuery = @"
                         INSERT INTO FacultyNotificationLogs 
-                        (UserID, StaffId, StaffCode, Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead)
+                        (UserID, id,  Title, Message, DeviceToken, Status, ErrorMessage, Version, CreatedAt, IsRead)
                         VALUES 
                         (@UserID, @id,  @Title, @Message, @DeviceToken, @Status, @ErrorMessage, @Version, GETDATE(), 0)";
 
