@@ -152,10 +152,10 @@ namespace FacultyApi.Controllers
                         request.UserID);
 
                     logCmd.Parameters.AddWithValue(
-                        "@Code",
-                        string.IsNullOrEmpty(staff.Code)
-                            ? (object)DBNull.Value
-                            : staff.Code);
+     "@Code",
+     staff.StaffId > 0
+         ? (object)staff.StaffId
+         : DBNull.Value);
 
                     logCmd.Parameters.AddWithValue(
                         "@Title",

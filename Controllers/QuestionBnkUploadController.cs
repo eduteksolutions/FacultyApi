@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 
 namespace FacultyApi
+
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -233,4 +234,6 @@ namespace FacultyApi
             }
         }
     }
+
+
 }
