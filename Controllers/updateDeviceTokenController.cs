@@ -40,5 +40,6 @@ namespace FacultyApi.Controllers
                 Message = "Device token updated successfully."
             });
         }
+
     }
 }
